@@ -1,12 +1,6 @@
 const axios = require("axios");
 const fs = require("fs");
-const web3 = require("@solana/web3.js");
 
-//Solana connection using Helius RPC
-const connection = new web3.Connection(
-  "https://rpc.helius.xyz/?api-key=<api_key>",
-  "confirmed"
-);
 //Helius URL
 const mintListURL = `https://api.helius.xyz/v1/mintlist?api-key=<api_key>`;
 
@@ -25,20 +19,23 @@ const getMintlist = async () => {
   return data.result;
 };
 
+//Helius RPC URL
+const rpcURL = `https://rpc.helius.xyz/?api-key=<api_key>`;
 //Helper function to get the owner of the mint
 const getHolder = async (address) => {
-  const pubKey = new web3.PublicKey(address);
-  const largestAccounts = await connection.getTokenLargestAccounts(pubKey);
-  const largestAccountInfo = await connection.getParsedAccountInfo(
-    largestAccounts.value[0].address
-  );
-  var owner = largestAccountInfo.value.data.parsed.info.owner;
-
+  const assetID = address;
+  const { data } = await axios.post(rpcURL, {
+    jsonrpc: "2.0",
+    id: "my-id",
+    method: "getAsset",
+    params: [assetID],
+  });
+  const owner = data.result.ownership.owner;
   return owner;
 };
 
-//Helper function to compile a list of holders
-const compileHolders = async () => {
+//Helper function to create a list of holders
+const createHolderList = async () => {
   const tempArray = [];
   const mintArray = await getMintlist();
   console.log(mintArray);
@@ -76,7 +73,7 @@ const chunk = (array, size) => {
 
 //Save function to save the holders to a json file
 const saveHolders = async () => {
-  const holderArray = await compileHolders();
+  const holderArray = await createHolderList();
   const data = JSON.stringify(holderArray);
 
   fs.writeFile("holders.json", data, (err) => {
